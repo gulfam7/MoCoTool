@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MoCoTool — Motion Detection &amp; Correction</title>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#161d2e; --panel2:#1d2740; --edge:#2a3550;
+    --ink:#e7ecf5; --muted:#9aa7c2; --accent:#4f8cff; --accent2:#33c48d;
+    --warn:#e0b341; --err:#e56a6a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);}
+  header{padding:16px 24px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:16px;}
+  header h1{font-size:18px;margin:0;font-weight:650;letter-spacing:.2px}
+  header .sub{color:var(--muted);font-size:13px}
+  #device{margin-left:auto;font-size:12px;color:var(--muted);border:1px solid var(--edge);
+          padding:4px 10px;border-radius:20px}
+  main{display:grid;grid-template-columns:360px 1fr;gap:0;min-height:calc(100vh - 58px)}
+  .controls{padding:20px;border-right:1px solid var(--edge);background:var(--panel)}
+  .view{padding:20px;overflow:auto}
+  .group{margin-bottom:20px}
+  .group h3{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:0 0 10px}
+  .seg{display:flex;border:1px solid var(--edge);border-radius:8px;overflow:hidden}
+  .seg button{flex:1;background:transparent;color:var(--muted);border:0;padding:9px;cursor:pointer;font-size:13px}
+  .seg button.on{background:var(--accent);color:#fff;font-weight:600}
+  .opt{display:block;border:1px solid var(--edge);border-radius:8px;padding:11px 12px;margin-bottom:8px;cursor:pointer;font-size:14px}
+  .opt.on{border-color:var(--accent);background:var(--panel2)}
+  .opt small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+  label.row{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted);margin:8px 0}
+  input[type=text],input[type=number],select{background:var(--panel2);border:1px solid var(--edge);color:var(--ink);
+        border-radius:7px;padding:8px;font-size:13px;width:100%}
+  .pathrow{display:flex;gap:8px}
+  .pathrow input{flex:1}
+  button.mini{background:var(--panel2);border:1px solid var(--edge);color:var(--ink);border-radius:7px;padding:8px 12px;cursor:pointer;font-size:13px}
+  button.mini:hover{border-color:var(--accent)}
+  button.run{width:100%;background:var(--accent2);border:0;color:#06231a;font-weight:700;padding:12px;border-radius:9px;cursor:pointer;font-size:15px;margin-top:6px}
+  button.run:disabled{opacity:.5;cursor:not-allowed}
+  .adv summary{cursor:pointer;color:var(--muted);font-size:13px}
+  .progress{margin-top:16px}
+  .bar{height:8px;background:var(--panel2);border-radius:6px;overflow:hidden;border:1px solid var(--edge)}
+  .bar > div{height:100%;background:var(--accent);width:0%;transition:width .3s}
+  .bar.indet > div{width:35% !important;background:linear-gradient(90deg,transparent,var(--accent),transparent);
+                   animation:slide 1.2s linear infinite}
+  @keyframes slide{0%{margin-left:-35%}100%{margin-left:100%}}
+  .status{margin-top:10px;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:9px}
+  .status .dot{width:9px;height:9px;border-radius:50%;background:var(--warn);animation:pulse 1s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
+  .credit{margin-top:22px;padding-top:14px;border-top:1px solid var(--edge);
+          color:var(--muted);font-size:12px;line-height:1.5}
+  .credit b{color:var(--ink)}
+  .chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:10px}
+  .logbox{margin-top:10px;background:#0b101b;border:1px solid var(--edge);border-radius:8px;padding:10px;
+          font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#b7c4e0;max-height:150px;overflow:auto;white-space:pre-wrap}
+  .cards{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+  .card{background:var(--panel);border:1px solid var(--edge);border-radius:10px;padding:14px 16px;min-width:150px}
+  .card .k{font-size:12px;color:var(--muted)}
+  .card .v{font-size:20px;font-weight:700;margin-top:4px}
+  .pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700}
+  .pill.motion{background:rgba(229,106,106,.15);color:var(--err)}
+  .pill.free{background:rgba(51,196,141,.15);color:var(--accent2)}
+  .viewer{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .panel{background:var(--panel);border:1px solid var(--edge);border-radius:10px;padding:10px;text-align:center}
+  .panel h4{margin:0 0 8px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  .panel img{width:100%;background:#000;border-radius:6px;image-rendering:auto;aspect-ratio:auto}
+  .sliders{margin-top:16px}
+  .sliders label{display:block;font-size:12px;color:var(--muted);margin:12px 0 4px}
+  input[type=range]{width:100%}
+  .empty{color:var(--muted);text-align:center;margin-top:80px;font-size:14px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  th,td{border-bottom:1px solid var(--edge);padding:7px 8px;text-align:left}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  td.mo{color:var(--err)} td.fr{color:var(--accent2)}
+  .note{font-size:12px;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>MoCoTool</h1>
+  <span class="sub">Multi-Echo MRI Motion Detection &amp; Correction</span>
+  <span id="device">device: …</span>
+</header>
+
+<main>
+  <!-- ================= CONTROLS ================= -->
+  <section class="controls">
+    <div class="group">
+      <h3>Mode</h3>
+      <div class="seg" id="modeSeg">
+        <button data-mode="single" class="on">Single file</button>
+        <button data-mode="batch">Batch folder</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <h3>Operation</h3>
+      <div id="ops">
+        <label class="opt on" data-op="detect_correct">Detection + Correction
+          <small>Detect; correct only if motion; re-check. Loop up to <span id="mi">3</span>×.</small></label>
+        <label class="opt" data-op="detect">Detection only
+          <small>Report motion probability &amp; decision. No output volume.</small></label>
+        <label class="opt" data-op="correct">Correction only
+          <small>Correct every volume (full volume), unconditionally.</small></label>
+      </div>
+    </div>
+
+    <div class="group">
+      <h3 id="inputLabel">Input file</h3>
+      <div class="pathrow">
+        <input type="text" id="inputPath" placeholder="path to .mat file"/>
+        <button class="mini" id="browseBtn">Browse…</button>
+      </div>
+      <div class="note" id="inputNote">Pick a single <code>ima_comb_*.mat</code> file.</div>
+    </div>
+
+    <div class="group">
+      <h3>Output folder</h3>
+      <div class="pathrow">
+        <input type="text" id="outputPath" placeholder="(default: input folder / mocotool_output)"/>
+        <button class="mini" id="browseOut">Browse…</button>
+      </div>
+    </div>
+
+    <details class="adv group">
+      <summary>Advanced</summary>
+      <label class="row">Decision threshold
+        <input type="number" id="threshold" step="0.01" min="0" max="1" placeholder="config (0.15)" style="width:110px"/></label>
+      <label class="row">Max iterations
+        <input type="number" id="maxIters" value="3" min="1" max="5" style="width:110px"/></label>
+      <label class="row">Gate override
+        <select id="gate" style="width:150px">
+          <option value="auto">Auto (use decision)</option>
+          <option value="force">Always correct</option>
+          <option value="skip">Never correct</option>
+        </select></label>
+      <label class="chk"><input type="checkbox" id="saveIter"/> Save each iteration's output</label>
+    </details>
+
+    <button class="run" id="runBtn">Run</button>
+
+    <div class="progress" id="progress" style="display:none">
+      <div class="bar" id="bar"><div id="barFill"></div></div>
+      <div class="status" id="status" style="display:none"><span class="dot"></span><span id="statusText"></span></div>
+      <div class="logbox" id="log"></div>
+      <button class="mini" id="cancelBtn" style="margin-top:8px;display:none">Cancel</button>
+    </div>
+
+    <div class="credit">Developed by <b>Gulfam A. Saju, PhD</b></div>
+  </section>
+
+  <!-- ================= VIEW ================= -->
+  <section class="view" id="view">
+    <div class="empty" id="empty">Configure a run on the left and press <b>Run</b>.</div>
+    <div id="single" style="display:none"></div>
+    <div id="batch" style="display:none"></div>
+  </section>
+</main>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let MODE="single", OP="detect_correct", JOB=null, POLL=null, VIZ=null;
+
+// --- mode + op toggles ---
+$("#modeSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  MODE=b.dataset.mode; $$("#modeSeg button").forEach(x=>x.classList.toggle("on",x===b));
+  $("#inputLabel").textContent = MODE==="single"?"Input file":"Input folder";
+  $("#inputNote").innerHTML = MODE==="single"
+     ? "Pick a single <code>ima_comb_*.mat</code> file."
+     : "Pick a folder containing <code>ima_comb_*.mat</code> files.";
+  $("#inputPath").placeholder = MODE==="single"?"path to .mat file":"path to folder";
+});
+$("#ops").addEventListener("click",e=>{
+  const o=e.target.closest(".opt"); if(!o)return;
+  OP=o.dataset.op; $$(".opt").forEach(x=>x.classList.toggle("on",x===o));
+});
+$("#maxIters").addEventListener("input",e=>$("#mi").textContent=e.target.value);
+
+// --- browse buttons ---
+async function browse(kindFolder, target){
+  const r=await fetch("/api/browse",{method:"POST",headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({kind:kindFolder?"folder":"file"})});
+  const j=await r.json(); if(j.path) $(target).value=j.path;
+}
+$("#browseBtn").onclick=()=>browse(MODE==="batch","#inputPath");
+$("#browseOut").onclick=()=>browse(true,"#outputPath");
+
+// --- device status ---
+fetch("/api/status").then(r=>r.json()).then(s=>{$("#device").textContent="device: "+s.device;});
+
+// --- run ---
+$("#runBtn").onclick=async()=>{
+  const input=$("#inputPath").value.trim();
+  if(!input){alert("Select an input first.");return;}
+  const body={mode_ui:MODE, run_option:OP, input_path:input,
+    output_dir:$("#outputPath").value.trim(),
+    threshold:$("#threshold").value, gate:$("#gate").value, max_iters:$("#maxIters").value,
+    save_intermediate:$("#saveIter").checked};
+  const r=await fetch("/api/run",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(!r.ok){const j=await r.json();alert(j.error||"Failed to start");return;}
+  const {job_id}=await r.json(); JOB=job_id;
+  $("#runBtn").disabled=true; $("#progress").style.display="block";
+  $("#empty").style.display="none"; $("#single").style.display="none"; $("#batch").style.display="none";
+  $("#cancelBtn").style.display = MODE==="batch"?"inline-block":"none";
+  $("#log").textContent=""; $("#barFill").style.width="0%";
+  POLL=setInterval(poll,1000); poll();
+};
+$("#cancelBtn").onclick=()=>{ if(JOB) fetch("/api/cancel/"+JOB,{method:"POST"}); };
+
+async function poll(){
+  if(!JOB)return;
+  const j=await (await fetch("/api/job/"+JOB)).json();
+  const prog=j.progress||[];
+  $("#log").textContent=prog.join("\n"); $("#log").scrollTop=1e6;
+
+  // status label + bar behaviour (operation-aware, never mislabels)
+  const running = j.status==="running";
+  const correcting = prog.slice().reverse().find(l=>l.startsWith("CORRECTING"));
+  const bar=$("#bar"), st=$("#status");
+  if(running && (correcting || MODE==="single")){
+    bar.classList.add("indet"); st.style.display="flex";
+    let txt;
+    if(correcting){
+      const m=correcting.match(/iter (\d+)\/(\d+)/);
+      txt = m ? `Performing Motion Correction — iteration ${m[1]} of ${m[2]}…`
+              : "Performing Motion Correction…";
+    } else if(OP==="detect"){
+      txt = "Detecting…";
+    } else if(OP==="correct"){
+      txt = "Performing Motion Correction…";
+    } else { // detect_correct, before the first CORRECTING marker
+      txt = "Detecting…";
+    }
+    $("#statusText").textContent = txt;
+  } else {
+    bar.classList.remove("indet");
+    const pct = j.total? Math.round(100*j.done/j.total):0;
+    $("#barFill").style.width=pct+"%";
+  }
+
+  if(["done","error","cancelled"].includes(j.status)){
+    clearInterval(POLL); POLL=null; $("#runBtn").disabled=false; $("#cancelBtn").style.display="none";
+    bar.classList.remove("indet"); $("#barFill").style.width="100%"; st.style.display="none";
+    if(j.status==="error"){ $("#log").textContent += "\nERROR: "+(j.error||""); }
+    render(j);
+  }
+}
+
+// --- render results ---
+function pill(dec){ if(!dec) return ""; const mo=dec==="MOTION";
+  return `<span class="pill ${mo?"motion":"free"}">${dec}</span>`; }
+
+function render(j){
+  if(MODE==="single") renderSingle(j.results[0]||{});
+  else renderBatch(j);
+}
+
+function card(k,v){return `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`;}
+
+function renderSingle(r){
+  $("#batch").style.display="none"; const el=$("#single"); el.style.display="block";
+  const dec=r.decision||"-";
+  const pinit=r.p_subject_initial, pfin=(r.p_subject_final!=null?r.p_subject_final:r.p_subject);
+  let cards = card("Subject", r.subject||"-");
+  cards += card("Decision", pill(dec)||dec);
+  if(pfin!=null) cards += card("Motion prob.", (+pfin).toFixed(3));
+  if(pinit!=null) cards += card("Prob. before", (+pinit).toFixed(3));
+  cards += card("Corrected", r.corrected?("YES ("+(r.iterations||0)+"×)"):"NO");
+  if(r.dim_fixed) cards += card("Dimension fix", r.dim_op);
+  cards += card("Time", (r.seconds||"?")+"s");
+  let html = `<div class="cards">${cards}</div>`;
+  if(r.error){ html += `<div class="note" style="color:var(--err)">Error: ${r.error}</div>`; }
+
+  // viewer only if a correction was produced
+  if(r.corrected){
+    html += `<div class="viewer">
+      <div class="panel"><h4>Original</h4><img id="imgOrig"/></div>
+      <div class="panel"><h4>Corrected</h4><img id="imgCorr"/></div>
+      <div class="panel"><h4>|Difference| ×5</h4><img id="imgDiff"/></div></div>
+      <div class="sliders">
+        <label>Slice: <span id="sVal">-</span></label><input type="range" id="sliceSlider" min="0" value="0"/>
+        <label>Echo: <span id="eVal">-</span></label><input type="range" id="echoSlider" min="0" value="0"/>
+      </div>`;
+  } else if(OP!=="detect"){
+    html += `<div class="note">No correction was applied (volume classified motion-free, or correction skipped).</div>`;
+  }
+  el.innerHTML = html;
+  if(r.corrected) initViewer();
+}
+
+async function initViewer(){
+  const meta=await (await fetch("/api/viz_meta/"+JOB)).json();
+  if(meta.error) return;
+  VIZ={slices:meta.slices, echoes:meta.echoes, s:Math.floor(meta.slices/2), e:0};
+  const ss=$("#sliceSlider"), es=$("#echoSlider");
+  ss.max=meta.slices-1; ss.value=VIZ.s; es.max=meta.echoes-1; es.value=0;
+  ss.oninput=()=>{VIZ.s=+ss.value; paint();}; es.oninput=()=>{VIZ.e=+es.value; paint();};
+  paint();
+}
+function paint(){
+  $("#sVal").textContent=VIZ.s+1+" / "+VIZ.slices;
+  $("#eVal").textContent="E"+(VIZ.e+1);
+  const q=`?slice=${VIZ.s}&echo=${VIZ.e}&t=${Date.now()}`;
+  $("#imgOrig").src="/api/viz/"+JOB+q+"&panel=orig";
+  $("#imgCorr").src="/api/viz/"+JOB+q+"&panel=corr";
+  $("#imgDiff").src="/api/viz/"+JOB+q+"&panel=diff";
+}
+
+function renderBatch(j){
+  $("#single").style.display="none"; const el=$("#batch"); el.style.display="block";
+  const rows=j.results||[];
+  const nCorr=rows.filter(r=>r.corrected).length;
+  const nErr=rows.filter(r=>r.status==="error").length;
+  let html = `<div class="cards">
+     ${card("Subjects", rows.length)}
+     ${card("Corrected", nCorr)}
+     ${card("Not corrected", rows.length-nCorr-nErr)}
+     ${card("Errors", nErr)}</div>`;
+  if(j.summary_path) html += `<div class="note">Summary Excel: <code>${j.summary_path}</code></div>`;
+  html += `<table><thead><tr><th>Subject</th><th>Decision</th><th>Corrected</th><th>Iters</th>
+     <th>Prob.</th><th>Dim-fix</th><th>Time</th><th>Status</th></tr></thead><tbody>`;
+  for(const r of rows){
+    const dec=r.decision||"-"; const mo=dec==="MOTION";
+    const p=(r.p_subject_final!=null?r.p_subject_final:r.p_subject);
+    html += `<tr>
+      <td>${r.subject||""}</td>
+      <td class="${mo?"mo":"fr"}">${dec}</td>
+      <td>${r.corrected?"YES":"NO"}</td>
+      <td>${r.iterations||0}</td>
+      <td>${p!=null?(+p).toFixed(3):""}</td>
+      <td>${r.dim_fixed?r.dim_op:"-"}</td>
+      <td>${r.seconds||""}s</td>
+      <td>${r.status==="error"?("<span style='color:var(--err)'>error</span>"):"ok"}</td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+  el.innerHTML=html;
+}
+</script>
+</body>
+</html>

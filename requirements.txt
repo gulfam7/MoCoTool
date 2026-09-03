@@ -1,0 +1,12 @@
+# MoCoTool runtime dependencies (Python 3.9, tested).
+tensorflow==2.15.1
+numpy>=1.23,<2.0
+scipy>=1.10
+h5py>=3.8
+pandas>=1.5
+openpyxl>=3.1
+# UI (added in the web-UI step)
+fastapi>=0.110
+uvicorn>=0.29
+# packaging (build-time only)
+# pyinstaller>=6.0
