@@ -2,3 +2,6 @@ dist/
 weights/
 *.h5
 *.mp4
+build/
+__pycache__/
+out/
